@@ -2,6 +2,7 @@ import streamlit as st
 from utils import *
 from dateutil.relativedelta import relativedelta
 from datetime import datetime, timedelta
+import os
 
 today = datetime.today()
 date = today.strftime('%Y-%m-%d')
@@ -47,12 +48,43 @@ else:
         chosen_maps = [f"&maps=de_{selected_map_1.lower()}"]
 
     pistol_links = [
-        f"https://www.hltv.org/stats/teams/pistols?startDate={one_year_ago}&endDate={date}{m}&rankingFilter=Top50"
+        {
+            "ct": f"https://www.hltv.org/stats/teams/pistols?startDate={one_year_ago}&endDate={date}{m}&side=COUNTER_TERRORIST&rankingFilter=Top50",
+            "t":  f"https://www.hltv.org/stats/teams/pistols?startDate={one_year_ago}&endDate={date}{m}&side=TERRORIST&rankingFilter=Top50",
+        }
         for m in chosen_maps
     ]
 
-    # st.write(f"**{selected_team_1}** vs **{selected_team_2}** — {number_of_maps_choice}")
+    if "continued" not in st.session_state:
+        st.session_state.continued = False
 
-    if st.button("Run"):
-        for i, link in enumerate(pistol_links, start=1):
-            st.write(f"Please go to [this link]({link}) and save the page as 'pistols{i}.html' in the 'data' folder.")
+    if st.button("Continue"):
+        st.session_state.continued = True
+
+    if st.session_state.continued:
+        for i, links in enumerate(pistol_links, start=1):
+            st.write(f"Please go to the following pages and save them as pistols{i}_ct.html and pistols{i}_t.html in the data folder:")
+            st.write(f"Map {i} — [CT side]({links['ct']}) | [T side]({links['t']})")
+
+        if st.button("Run"):
+            if len(chosen_maps) == 0:
+                st.warning("Please select at least one map.")
+            elif len(chosen_maps) == 1:
+                ct_data = get_pistol_data(os.path.join(BASE_DIR, "data", "pistols1_ct.html"), selected_team_1, selected_team_2)
+                t_data  = get_pistol_data(os.path.join(BASE_DIR, "data", "pistols1_t.html"),  selected_team_1, selected_team_2)
+
+                st.write("### Map 1 — CT side")
+                st.table(ct_data)
+
+                st.write("### Map 1 — T side")
+                st.table(t_data)
+            else:
+                for i in range(1, len(chosen_maps) + 1):
+                    ct_data = get_pistol_data(os.path.join(BASE_DIR, "data", f"pistols{i}_ct.html"), selected_team_1, selected_team_2)
+                    t_data  = get_pistol_data(os.path.join(BASE_DIR, "data", f"pistols{i}_t.html"),  selected_team_1, selected_team_2)
+
+                    st.write(f"### Map {i} — CT side")
+                    st.table(ct_data)
+
+                    st.write(f"### Map {i} — T side")
+                    st.table(t_data)
