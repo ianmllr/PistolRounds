@@ -14,6 +14,7 @@ MATCHES_URL = "https://danskespil.dk/oddset/sport/977/esports/matches?preselecte
 # Known name mismatches between HLTV and Danske Spil
 TEAM_NAME_MAP = {
     "The MongolZ": "MongolZ",
+    "paiN Academy": "paiN Gaming Academy",
 }
 # Reverse: Danske Spil name to HLTV name (for pistol data lookup)
 TEAM_NAME_MAP_REVERSE = {v: k for k, v in TEAM_NAME_MAP.items()}

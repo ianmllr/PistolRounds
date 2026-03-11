@@ -28,8 +28,16 @@ if not teams or not maps:
     st.warning("No teams found. Please download teams.html")
 else:
     sorted_teams = sorted(teams)
+
     selected_team_1 = st.selectbox("Team 1", sorted_teams, key="team1")
+    custom_team_1 = st.text_input("Or type a custom name for Team 1", key="custom_team1", placeholder="Leave blank to use the dropdown")
+    if custom_team_1.strip():
+        selected_team_1 = custom_team_1.strip()
+
     selected_team_2 = st.selectbox("Team 2", sorted_teams, key="team2")
+    custom_team_2 = st.text_input("Or type a custom name for Team 2", key="custom_team2", placeholder="Leave blank to use the dropdown")
+    if custom_team_2.strip():
+        selected_team_2 = custom_team_2.strip()
 
     number_of_maps_choice = st.radio("BO3 or BO1?", ["BO3", "BO1"])
 
@@ -126,16 +134,44 @@ else:
         odds = st.session_state.odds or {}
 
         st.markdown("---")
+        with st.expander("Explaination of terms"):
+            st.markdown("""
+**Pistol WR** — The team's pistol round win rate on this side (CT or T) over the last year, pulled from HLTV. Higher is better.
+
+**Matches** — How many pistol rounds that win rate is based on. A low number means the data is less reliable.
+
+**True prob** — Our best estimate of the team's real chance of winning this pistol round. Calculated by comparing the CT team's CT win rate against the T team's T win rate, then normalising so both sides add up to 100%.
+
+**Fair prob (no vig)** — The probability implied by the bookmaker's odds, but with their profit margin (the "vig") removed. This is what the odds would look like in a fair market.
+
+**Edge** — True prob minus Fair prob. A positive edge means we think the team is more likely to win than the bookmaker's fair odds suggest. This is where the value comes from.
+
+**Odds** — The decimal odds offered by Danske Spil (e.g. 1.80 means you win 0.80 for every 1.00 staked).
+
+**EV (Expected Value)** — The average profit or loss per 1 unit staked if you placed this bet many times over. Positive EV means the bet is profitable in the long run. Calculated as: `(true_prob × profit) - (1 - true_prob)`.
+
+**Kelly %** — The optimal percentage of your bankroll to stake on this bet, according to the Kelly Criterion. It grows with your edge and shrinks as the odds get longer. Consider using a fraction of this (e.g. half-Kelly) to be more conservative.
+
+**Bet?** — Yes if EV is positive and the edge is at or above the minimum threshold you set. No otherwise.
+""")
+
         col1, col2 = st.columns(2)
         with col1:
             min_matches_ui = st.slider("Min matches (sample size guard)", 5, 50, 20, step=5)
         with col2:
             min_edge_ui = st.slider("Min edge to recommend a bet (%)", 0, 15, 3) / 100
 
+        # For BO3, CT side alternates: map1 = user choice, map2 = other team, map3 = user choice
+        other_team = selected_team_2 if team_starting_ct == selected_team_1 else selected_team_1
+        map_ct_starters = {1: team_starting_ct, 2: other_team, 3: team_starting_ct}
+
         for i in range(1, len(chosen_maps) + 1):
             map_key = f"map{i}"
             map_data = odds.get(map_key, {})
+            map_ct_starter = map_ct_starters[i]
             st.write(f"### Map {i}")
+            if number_of_maps_choice == "BO3":
+                st.caption(f"{map_ct_starter} starts CT on this map")
 
             ct_data = get_pistol_data(
                 os.path.join(BASE_DIR, "data", f"pistols{i}_ct.html"),
@@ -159,7 +195,7 @@ else:
                     ct_data=ct_data,
                     t_data=t_data,
                     round_odds=round_data,
-                    team_starting_ct=team_starting_ct,
+                    team_starting_ct=map_ct_starter,
                     team_a=selected_team_1,
                     team_b=selected_team_2,
                     round_num=round_num,

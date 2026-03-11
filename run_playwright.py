@@ -1,8 +1,4 @@
-"""
-Helper script called by main.py via subprocess to run Playwright
-outside of Streamlit's event loop. Outputs JSON with match URL and odds.
-Usage: python run_playwright.py "Team 1" "Team 2" <num_maps>
-"""
+
 import sys
 import json
 from utils import find_and_click_match, get_pistol_odds
