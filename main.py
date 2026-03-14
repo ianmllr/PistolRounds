@@ -7,6 +7,36 @@ from datetime import datetime, timedelta
 import os
 import json
 
+
+def parse_manual_odd(value: str) -> float | None:
+    """Parse manual decimal odds from text, accepting both comma and dot decimals."""
+    if not value:
+        return None
+
+    cleaned = value.strip().replace(",", ".")
+    try:
+        parsed = float(cleaned)
+    except ValueError:
+        return None
+
+    # Decimal odds must be greater than 1.0 to be meaningful/valid.
+    if parsed <= 1.0:
+        return None
+
+    return parsed
+
+
+def merge_manual_odds(existing_odds: dict, manual_odds: dict) -> dict:
+    """Merge manual odds into fetched odds, overriding only provided map/round entries."""
+    merged = json.loads(json.dumps(existing_odds)) if existing_odds else {}
+
+    for map_key, map_data in manual_odds.items():
+        merged.setdefault(map_key, {})
+        for round_key, round_data in map_data.items():
+            merged[map_key][round_key] = round_data
+
+    return merged
+
 today = datetime.today()
 date = today.strftime('%Y-%m-%d')
 one_year_ago = (today - relativedelta(years=1)).strftime('%Y-%m-%d')
@@ -132,6 +162,52 @@ else:
             st.warning(f"Match not found on Danske Spil for {selected_team_1} vs {selected_team_2}.")
 
         odds = st.session_state.odds or {}
+
+        manual_odds = {}
+        if not st.session_state.match_url:
+            st.markdown("### Manual odds input")
+            st.caption("Enter decimal odds manually for each map and pistol round to run the analysis.")
+
+            for i in range(1, len(chosen_maps) + 1):
+                st.write(f"**Map {i}**")
+                map_manual = {}
+
+                for round_num in [1, 13]:
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        odd_team_1_raw = st.text_input(
+                            f"Map {i} Round {round_num} - {selected_team_1}",
+                            key=f"manual_map{i}_round{round_num}_team1",
+                            placeholder="e.g. 1.85",
+                        )
+                    with col2:
+                        odd_team_2_raw = st.text_input(
+                            f"Map {i} Round {round_num} - {selected_team_2}",
+                            key=f"manual_map{i}_round{round_num}_team2",
+                            placeholder="e.g. 1.95",
+                        )
+
+                    odd_team_1 = parse_manual_odd(odd_team_1_raw)
+                    odd_team_2 = parse_manual_odd(odd_team_2_raw)
+
+                    if odd_team_1_raw and odd_team_1 is None:
+                        st.error(f"Map {i} round {round_num}: invalid odds for {selected_team_1}.")
+                    if odd_team_2_raw and odd_team_2 is None:
+                        st.error(f"Map {i} round {round_num}: invalid odds for {selected_team_2}.")
+
+                    if odd_team_1 is not None and odd_team_2 is not None:
+                        map_manual[f"round{round_num}"] = {
+                            selected_team_1: f"{odd_team_1:.2f}",
+                            selected_team_2: f"{odd_team_2:.2f}",
+                        }
+
+                if map_manual:
+                    manual_odds[f"map{i}"] = map_manual
+
+            if manual_odds:
+                odds = merge_manual_odds(odds, manual_odds)
+            else:
+                st.info("Add both teams' odds for a round to include it in analysis.")
 
         st.markdown("---")
         with st.expander("Explaination of terms"):
